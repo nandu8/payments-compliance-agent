@@ -1,0 +1,11 @@
+:20:REF123456789
+:23B:CRED
+:32A:240115GBP10000,00
+:50K:ACME Corporation
+123 Business Street
+London EC1A 1BB
+:59:John Smith
+456 Residential Road
+London SW1A 1AA
+:70:Invoice payment INV-2024-001
+:71A:SHA

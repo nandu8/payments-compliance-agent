@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03">
+  <CstmrCdtTrfInitn>
+    <GrpHdr>
+      <MsgId>MSG001</MsgId>
+      <CreDtTm>2024-01-15T10:00:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <CtrlSum>10000.00</CtrlSum>
+      <InitgPty><Nm>ACME Corporation</Nm></InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>PMT001</PmtInfId>
+      <PmtMtd>TRF</PmtMtd>
+      <Dbtr><Nm>ACME Corporation</Nm></Dbtr>
+      <DbtrAcct><Id><IBAN>GB29NWBK60161331926819</IBAN></Id></DbtrAcct>
+      <DbtrAgt><FinInstnId><BIC>NWBKGB2L</BIC></FinInstnId></DbtrAgt>
+      <CdtTrfTxInf>
+        <PmtId><EndToEndId>E2E001</EndToEndId></PmtId>
+        <Amt><InstdAmt Ccy="GBP">10000.00</InstdAmt></Amt>
+        <CdtrAgt><FinInstnId><BIC>BARCGB22</BIC></FinInstnId></CdtrAgt>
+        <Cdtr>
+          <Nm>John Smith</Nm>
+          <PstlAdr><Ctry>GB</Ctry></PstlAdr>
+        </Cdtr>
+        <CdtrAcct><Id><IBAN>GB94BARC20201530093459</IBAN></Id></CdtrAcct>
+        <UltmtDbtr><Nm>ACME Corporation Ltd</Nm></UltmtDbtr>
+        <RmtInf><Ustrd>Invoice INV-2024-001</Ustrd></RmtInf>
+      </CdtTrfTxInf>
+    </PmtInf>
+  </CstmrCdtTrfInitn>
+</Document>
