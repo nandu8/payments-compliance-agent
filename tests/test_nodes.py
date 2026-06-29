@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from src.nodes.parse_payment import parse_payment, route_after_parse
+from src.rules.sepa_rules import SEPA_RULES, is_valid_iban, is_valid_bic, is_valid_amount
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -78,3 +79,60 @@ def test_route_after_parse_success_goes_to_validate():
 def test_route_after_parse_error_goes_to_report():
     state = {"parse_status": "ERROR"}
     assert route_after_parse(state) == "generate_audit_report"
+
+
+# ─── Validator unit tests ─────────────────────────────────────────────────────
+
+def test_valid_iban_passes():
+    assert is_valid_iban("GB29NWBK60161331926819") is True
+
+def test_invalid_iban_fails():
+    assert is_valid_iban("GB00NWBK60161331926819") is False
+
+def test_empty_iban_fails():
+    assert is_valid_iban("") is False
+
+def test_valid_bic_8_chars_passes():
+    assert is_valid_bic("NWBKGB2L") is True
+
+def test_valid_bic_11_chars_passes():
+    assert is_valid_bic("NWBKGB2LXXX") is True
+
+def test_invalid_bic_fails():
+    assert is_valid_bic("INVALID") is False
+
+def test_valid_amount_passes():
+    assert is_valid_amount("10000.00") is True
+
+def test_zero_amount_fails():
+    assert is_valid_amount("0") is False
+
+def test_negative_amount_fails():
+    assert is_valid_amount("-100") is False
+
+
+# ─── Rule registry tests ──────────────────────────────────────────────────────
+
+def test_gb_rule_exists_in_registry():
+    gb_rules = [r for r in SEPA_RULES if "GB" in r.country_scope]
+    assert len(gb_rules) > 0
+
+def test_all_rules_have_valid_severity():
+    for rule in SEPA_RULES:
+        assert rule.severity in ("ERROR", "WARNING"), \
+            f"Rule {rule.field} has invalid severity: {rule.severity}"
+
+def test_all_rules_have_check_callable():
+    for rule in SEPA_RULES:
+        assert callable(rule.check), \
+            f"Rule {rule.field} has no callable check"
+
+def test_creditor_name_rule_fails_on_empty():
+    rule = next(r for r in SEPA_RULES if r.field == "creditor_name")
+    assert rule.check({"creditor_name": None}) is False
+    assert rule.check({"creditor_name": "John Smith"}) is True
+
+def test_gb_ultimate_debtor_rule_fails_when_absent():
+    rule = next(r for r in SEPA_RULES if r.field == "ultimate_debtor_name")
+    assert rule.check({"ultimate_debtor_name": None}) is False
+    assert rule.check({"ultimate_debtor_name": "ACME Ltd"}) is True
