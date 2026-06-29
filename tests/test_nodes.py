@@ -3,6 +3,7 @@ from pathlib import Path
 from src.nodes.parse_payment import parse_payment, route_after_parse
 from src.rules.sepa_rules import SEPA_RULES, is_valid_iban, is_valid_bic, is_valid_amount
 from src.nodes.validate_fields import validate_fields
+from src.nodes.retrieve_context import retrieve_context, route_after_retrieve
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -239,6 +240,65 @@ def test_remittance_info_returns_ambiguous():
     assert result["validation_status"] == "AMBIGUOUS"
     assert len(result["validation_findings"]) == 1
 
-# Test 3 — GB payment, ultimate_debtor_name missing. What status? How many findings?
-# Test 4 — Same as Test 3 but change creditor_country to "DE". The GB-specific rule should not fire. What status? How many findings?
-# Test 5 — Valid payment but remove remittance_info only. Remember remittance_info is a WARNING not an ERROR. What status?
+
+# Retrieve context tests
+# A state with one FAIL finding returns one regulation clause
+# A state with multiple findings returns matching number of clauses
+# Each clause has all four fields — field, query, clause, source
+# Routing — FAIL goes to generate_audit_report, AMBIGUOUS goes to human_review
+
+def test_regulation_clause_return_success():
+    state = {
+        "payment_format": "SEPA",
+        "validation_findings": [{
+            "field": "creditor_name",
+            "issue": "Creditor name is mandatory for all SEPA credit transfers (EPC133-08 AT-21)",
+            "severity": "ERROR"
+    }],
+        "validation_status": "FAIL"
+
+    }
+    result = retrieve_context(state)
+    assert len(result["regulation_context"]) == 1
+    clause = result["regulation_context"][0]
+    assert clause["field"] == "creditor_name"
+    assert clause["query"] == "Creditor name is mandatory for all SEPA credit transfers (EPC133-08 AT-21)"
+    assert clause["clause"] is not None
+    assert clause["source"] is not None
+
+def test_multiple_regulation_clause_return_success():
+    state = {
+        "payment_format": "SEPA",
+        "validation_findings": [{
+            "field": "creditor_name",
+            "issue": "Creditor name is mandatory for all SEPA credit transfers (EPC133-08 AT-21)",
+            "severity": "ERROR"
+        }, {
+            "field": "creditor_iban",
+            "issue": "Creditor IBAN is mandatory and must pass ISO 13616 checksum (EPC133-08 AT-20)",
+            "severity": "ERROR"
+        }],
+        "validation_status": "FAIL"
+
+    }
+    result = retrieve_context(state)
+    assert len(result["regulation_context"]) == 2
+    clause = result["regulation_context"][0]
+    assert clause["field"] == "creditor_name"
+    assert clause["query"] == "Creditor name is mandatory for all SEPA credit transfers (EPC133-08 AT-21)"
+    assert clause["clause"] is not None
+    assert clause["source"] is not None
+
+    clause = result["regulation_context"][1]
+    assert clause["field"] == "creditor_iban"
+    assert clause["query"] == "Creditor IBAN is mandatory and must pass ISO 13616 checksum (EPC133-08 AT-20)"
+    assert clause["clause"] is not None
+    assert clause["source"] is not None
+
+def test_route_after_retrieve_context_fail():
+    state = {"validation_status": "FAIL"}
+    assert route_after_retrieve(state) == "generate_audit_report"
+
+def test_route_after_retrieve_context_ambiguous():
+    state = {"validation_status": "AMBIGUOUS"}
+    assert route_after_retrieve(state) == "human_review"
