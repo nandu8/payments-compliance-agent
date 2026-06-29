@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from src.nodes.parse_payment import parse_payment, route_after_parse
 from src.rules.sepa_rules import SEPA_RULES, is_valid_iban, is_valid_bic, is_valid_amount
+from src.nodes.validate_fields import validate_fields
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -136,3 +137,108 @@ def test_gb_ultimate_debtor_rule_fails_when_absent():
     rule = next(r for r in SEPA_RULES if r.field == "ultimate_debtor_name")
     assert rule.check({"ultimate_debtor_name": None}) is False
     assert rule.check({"ultimate_debtor_name": "ACME Ltd"}) is True
+
+# Validate fields tests
+
+def test_valid_sepa_passes():
+    state = {
+        "payment_format": "SEPA",
+        "parsed_fields": {
+            "creditor_name": "John Smith",
+            "creditor_iban": "GB29NWBK60161331926819",
+            "creditor_bic": "BARCGB22",
+            "debtor_name": "ACME Corp",
+            "debtor_iban": "GB29NWBK60161331926819",
+            "amount": "10000.00",
+            "end_to_end_id": "E2E001",
+            "ultimate_debtor_name": "ACME Corp Ltd",
+            "remittance_info": "Invoice INV-001",
+            "creditor_country": "GB"
+        }
+    }
+    result = validate_fields(state)
+    print(f"{result['validation_findings']}")
+    assert result["validation_status"] == "PASS"
+    assert len(result["validation_findings"]) == 0
+    print(f"{result['validation_findings']}")
+
+def test_missing_creditor_name_returns_fail():
+    state = {
+        "payment_format": "SEPA",
+        "parsed_fields": {
+            "creditor_iban": "GB29NWBK60161331926819",
+            "creditor_bic": "BARCGB22",
+            "debtor_name": "ACME Corp",
+            "debtor_iban": "GB29NWBK60161331926819",
+            "amount": "10000.00",
+            "end_to_end_id": "E2E001",
+            "ultimate_debtor_name": "ACME Corp Ltd",
+            "remittance_info": "Invoice INV-001",
+            "creditor_country": "GB"
+        }
+    }
+    result = validate_fields(state)
+    assert result["validation_status"] == "FAIL"
+    assert len(result["validation_findings"]) == 1
+
+def test_missing_ultmate_debtor_name_returns_fail():
+    state = {
+        "payment_format": "SEPA",
+        "parsed_fields": {
+            "creditor_name": "John Smith",
+            "creditor_iban": "GB29NWBK60161331926819",
+            "creditor_bic": "BARCGB22",
+            "debtor_name": "ACME Corp",
+            "debtor_iban": "GB29NWBK60161331926819",
+            "amount": "10000.00",
+            "end_to_end_id": "E2E001",
+            "remittance_info": "Invoice INV-001",
+            "creditor_country": "GB"
+        }
+    }
+    result = validate_fields(state)
+    assert result["validation_status"] == "FAIL"
+    assert len(result["validation_findings"]) == 1
+
+def test_DE_creditor_country_returns_success():
+    state = {
+        "payment_format": "SEPA",
+        "parsed_fields": {
+            "creditor_name": "John Smith",
+            "creditor_iban": "GB29NWBK60161331926819",
+            "creditor_bic": "BARCGB22",
+            "debtor_name": "ACME Corp",
+            "debtor_iban": "GB29NWBK60161331926819",
+            "amount": "10000.00",
+            "end_to_end_id": "E2E001",
+            "ultimate_debtor_name": "ACME Corp Ltd",
+            "remittance_info": "Invoice INV-001",
+            "creditor_country": "DE"
+        }
+    }
+    result = validate_fields(state)
+    assert result["validation_status"] == "PASS"
+    assert len(result["validation_findings"]) == 0
+
+def test_remittance_info_returns_ambiguous():
+    state = {
+        "payment_format": "SEPA",
+        "parsed_fields": {
+            "creditor_name": "John Smith",
+            "creditor_iban": "GB29NWBK60161331926819",
+            "creditor_bic": "BARCGB22",
+            "debtor_name": "ACME Corp",
+            "debtor_iban": "GB29NWBK60161331926819",
+            "amount": "10000.00",
+            "end_to_end_id": "E2E001",
+            "ultimate_debtor_name": "ACME Corp Ltd",
+            "creditor_country": "GB"
+        }
+    }
+    result = validate_fields(state)
+    assert result["validation_status"] == "AMBIGUOUS"
+    assert len(result["validation_findings"]) == 1
+
+# Test 3 — GB payment, ultimate_debtor_name missing. What status? How many findings?
+# Test 4 — Same as Test 3 but change creditor_country to "DE". The GB-specific rule should not fire. What status? How many findings?
+# Test 5 — Valid payment but remove remittance_info only. Remember remittance_info is a WARNING not an ERROR. What status?
