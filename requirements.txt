@@ -1,4 +1,4 @@
-langgraph==0.2.28
+langgraph==0.2.60
 langchain==0.3.7
 langchain-openai==0.2.7
 fastapi==0.115.4
