@@ -6,6 +6,7 @@ from src.nodes.validate_fields import validate_fields
 from src.nodes.retrieve_context import retrieve_context, route_after_retrieve
 from src.nodes.human_review import human_review
 from unittest.mock import patch
+from src.nodes.generate_report import _determine_verdict, generate_audit_report
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -318,7 +319,7 @@ def test_human_review_approve():
         result = human_review(state)
     assert result.get('human_decision') == "APPROVE"
     assert result.get('human_notes') == "Payment looks legitimate"
-    # assert that what came out matches what went in
+
 
 def test_human_review_reject():
     state = {
@@ -331,4 +332,71 @@ def test_human_review_reject():
         result = human_review(state)
     assert result.get('human_decision') == "REJECT"
     assert result.get('human_notes') == "Payment does not look legitimate"
-    # assert that what came out matches what went in
+
+#Generate report test cases
+
+def test_parse_error_verdict_ERROR():
+    state = {
+        "parse_status": "ERROR"
+    }
+
+    verdict = _determine_verdict(state)
+    assert verdict == "REJECTED"
+
+def test_validation_pass_verdict():
+    state = {
+        "validation_status": "PASS"
+    }
+
+    verdict = _determine_verdict(state)
+    assert verdict == "APPROVED"
+
+def test_validation_fail_verdict():
+    state = {
+        "validation_status": "FAIL"
+    }
+
+    verdict = _determine_verdict(state)
+    assert verdict == "REJECTED"
+
+def test_human_decision_approve_verdict():
+    state = {
+        "human_decision": "APPROVE"
+    }
+
+    verdict = _determine_verdict(state)
+    assert verdict == "HUMAN_APPROVED"
+
+def test_human_decision_reject_verdict():
+    state = {
+        "human_decision": "REJECT"
+    }
+
+    verdict = _determine_verdict(state)
+    assert verdict == "HUMAN_REJECTED"
+
+
+def test_generate_audit_report():
+    state = {
+        "validation_status" : "FAIL",
+        "parsed_fields": {
+            "creditor_name": "John Smith"
+        }, 
+        "validation_findings": [{
+            "field": "creditor_name",
+            "issue": "Creditor name is mandatory for all SEPA credit transfers (EPC133-08 AT-21)",
+            "severity": "ERROR"        
+    }],
+        "regulation_context" : [{
+            "field": "creditor_name",
+            "query": "Creditor name is mandatory for all SEPA credit transfers (EPC133-08 AT-21)",
+            "clause": "Creditor name is mandatory for all SEPA credit transfers",
+            "source": "EPC133-08 AT-21"  
+        }]
+    }
+
+    with patch("src.nodes.generate_report._call_llm", return_value = "This is a test response") as mock_llm:
+        result = generate_audit_report(state)
+
+    assert result.get("audit_report") == "This is a test response"
+    assert result.get("final_verdict") == "REJECTED"
