@@ -4,6 +4,8 @@ from src.nodes.parse_payment import parse_payment, route_after_parse
 from src.rules.sepa_rules import SEPA_RULES, is_valid_iban, is_valid_bic, is_valid_amount
 from src.nodes.validate_fields import validate_fields
 from src.nodes.retrieve_context import retrieve_context, route_after_retrieve
+from src.nodes.human_review import human_review
+from unittest.mock import patch
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -302,3 +304,31 @@ def test_route_after_retrieve_context_fail():
 def test_route_after_retrieve_context_ambiguous():
     state = {"validation_status": "AMBIGUOUS"}
     assert route_after_retrieve(state) == "human_review"
+
+
+#Human Review tests
+def test_human_review_approve():
+    state = {
+        "validation_findings": [],
+        "regulation_context": [],
+        "human_decision": "APPROVE",
+        "human_notes": "Payment looks legitimate"
+    }
+    with patch("src.nodes.human_review.interrupt"):
+        result = human_review(state)
+    assert result.get('human_decision') == "APPROVE"
+    assert result.get('human_notes') == "Payment looks legitimate"
+    # assert that what came out matches what went in
+
+def test_human_review_reject():
+    state = {
+        "validation_findings": [],
+        "regulation_context": [],
+        "human_decision": "REJECT",
+        "human_notes": "Payment does not look legitimate"
+    }
+    with patch("src.nodes.human_review.interrupt"):
+        result = human_review(state)
+    assert result.get('human_decision') == "REJECT"
+    assert result.get('human_notes') == "Payment does not look legitimate"
+    # assert that what came out matches what went in
