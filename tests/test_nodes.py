@@ -24,7 +24,7 @@ def test_sepa_valid_parses_successfully():
     assert result["parse_status"] == "SUCCESS"
     assert result["payment_format"] == "SEPA"
     assert result["parsed_fields"]["creditor_name"] == "John Smith"
-    assert result["parsed_fields"]["creditor_iban"] == "GB94BARC20201530093459"
+    assert result["parsed_fields"]["creditor_iban"] == "GB29NWBK60161331926819"
     assert result["parsed_fields"]["creditor_country"] == "GB"
     assert result["parsed_fields"]["ultimate_debtor_name"] == "ACME Corporation Ltd"
     assert result["parsed_fields"]["currency"] == "GBP"
@@ -400,3 +400,20 @@ def test_generate_audit_report():
 
     assert result.get("audit_report") == "This is a test response"
     assert result.get("final_verdict") == "REJECTED"
+
+from src.graph import compiled_graph
+
+def test_graph_clean_pass():
+    state = {
+        "raw_payment": open("tests/fixtures/sepa_valid.xml").read()
+    }
+    config = {"configurable": {"thread_id": "test-1"}}
+    
+    with patch("src.nodes.generate_report._call_llm", return_value="Audit report: payment approved"):
+        result = compiled_graph.invoke(state, config=config)
+
+    print(result["parsed_fields"])
+
+    assert result["final_verdict"] == "APPROVED"
+    assert result["parse_status"] == "SUCCESS"
+    assert result["validation_status"] == "PASS"

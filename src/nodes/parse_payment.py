@@ -46,6 +46,7 @@ def _parse_sepa(raw: str) -> dict:
     try:
         root = ET.fromstring(raw)
         tx = root.find(".//pain:CdtTrfTxInf", SEPA_NS)
+        pmt_inf = root.find(".//pain:PmtInf", SEPA_NS)
 
         if tx is None:
             return _parse_error("SEPA", "Could not locate CdtTrfTxInf transaction block")
@@ -58,8 +59,8 @@ def _parse_sepa(raw: str) -> dict:
             "creditor_country":     _find_text(tx, "pain:Cdtr/pain:PstlAdr/pain:Ctry"),
 
             # Debtor
-            "debtor_name":          _find_text(tx, "pain:Dbtr/pain:Nm"),
-            "debtor_iban":          _find_text(tx, "pain:DbtrAcct/pain:Id/pain:IBAN"),
+            "debtor_name":          _find_text(pmt_inf, "pain:Dbtr/pain:Nm"),
+            "debtor_iban":          _find_text(pmt_inf, "pain:DbtrAcct/pain:Id/pain:IBAN"),
 
             # Ultimate debtor — optional in spec, required for GB per rulebook addendum
             "ultimate_debtor_name": _find_text(tx, "pain:UltmtDbtr/pain:Nm"),

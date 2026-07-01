@@ -22,7 +22,7 @@
           <Nm>John Smith</Nm>
           <PstlAdr><Ctry>GB</Ctry></PstlAdr>
         </Cdtr>
-        <CdtrAcct><Id><IBAN>GB94BARC20201530093459</IBAN></Id></CdtrAcct>
+        <CdtrAcct><Id><IBAN>GB29NWBK60161331926819</IBAN></Id></CdtrAcct>
         <UltmtDbtr><Nm>ACME Corporation Ltd</Nm></UltmtDbtr>
         <RmtInf><Ustrd>Invoice INV-2024-001</Ustrd></RmtInf>
       </CdtTrfTxInf>
